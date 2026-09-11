@@ -10,13 +10,10 @@
 <body>
 
 <div class="active-banner" id="activeBanner" hidden>
-  <div class="ab-eyebrow">Active now</div>
+  <div class="ab-eyebrow" id="abEyebrow">Active now</div>
   <div class="ab-title" id="abTitle">Task</div>
   <div class="ab-time" id="abTime">—</div>
-  <div class="ab-actions">
-    <button id="abDoneBtn" class="btn-primary" type="button">Mark done</button>
-    <button id="abSkipBtn" class="btn-ghost" type="button">Skip</button>
-  </div>
+  <div class="ab-actions" id="abActions"></div>
 </div>
 
 <div class="app">
@@ -35,20 +32,22 @@
     </div>
   </header>
 
-  <div class="qa-dates" id="qaDates"></div>
+  <div class="qa-dates-row">
+    <button id="viewPrevBtn" class="qa-date-nav" type="button" title="Previous day">‹</button>
+    <div class="qa-dates" id="qaDates"></div>
+    <button id="viewNextBtn" class="qa-date-nav" type="button" title="Next day">›</button>
+  </div>
+
   <form class="quick-add" id="quickAddForm">
     <input type="text" id="qaText" class="qa-text" placeholder="Edit YouTube video — or 9am-10:30am Edit YouTube video" required maxlength="120">
     <button type="submit" class="qa-send" aria-label="Add task">➤</button>
   </form>
-  <div class="qa-hint">No time? It slots in right after your last task. Or type a time first: <b>9am</b>, <b>2:30pm</b>, <b>9-10am</b>, <b>14:00-15:30</b>.</div>
+  <div class="qa-hint">Adds to whichever day is selected above. No time? It slots in right after the last task that day. Or type a time first: <b>9am</b>, <b>2:30pm</b>, <b>9-10am</b>, <b>14:00-15:30</b>.</div>
   <div class="qa-error" id="qaError" hidden></div>
 
-  <nav class="tabs">
-    <button class="tab active" data-view="today">Today</button>
-    <button class="tab" data-view="plan">Plan</button>
-  </nav>
+  <div class="view-date-label" id="viewDateLabel">Today</div>
 
-  <main id="todayView" class="view">
+  <main id="mainView">
     <section class="now-card" id="nowCard">
       <div class="now-eyebrow" id="nowEyebrow">Loading</div>
       <div class="now-title" id="nowTitle">—</div>
@@ -62,24 +61,7 @@
     </div>
 
     <section class="timeline" id="timeline"></section>
-    <div class="empty-state" id="emptyToday" hidden>
-      Nothing planned for today.<br>Add one above to get started.
-    </div>
-  </main>
-
-  <main id="planView" class="view" hidden>
-    <div class="plan-header">
-      <div class="plan-date-switch">
-        <button id="planPrev" type="button" title="Previous day">‹</button>
-        <button id="planToday" type="button">Today</button>
-        <button id="planTomorrow" type="button">Tomorrow</button>
-        <button id="planNext" type="button" title="Next day">›</button>
-      </div>
-      <h2 id="planDateLabel">—</h2>
-    </div>
-
-    <ul class="plan-list" id="planList"></ul>
-    <div class="empty-state" id="emptyPlan" hidden>Nothing planned for this day yet.</div>
+    <div class="empty-state" id="emptyView" hidden></div>
   </main>
 </div>
 
@@ -104,6 +86,18 @@
     <div class="sc-actions">
       <button id="scCancelBtn" class="btn-primary" type="button">Keep it — go back</button>
       <button id="scConfirmBtn" class="btn-text-muted" type="button" disabled>Yes, skip it (3)</button>
+    </div>
+  </div>
+</div>
+
+<div class="skip-confirm-overlay" id="deleteConfirmOverlay" hidden>
+  <div class="skip-confirm-box">
+    <div class="sc-title">Delete this task?</div>
+    <div class="sc-task" id="dcTaskTitle">Task name</div>
+    <div class="sc-msg">This can't be undone.</div>
+    <div class="sc-actions">
+      <button id="dcCancelBtn" class="btn-ghost" type="button">Cancel</button>
+      <button id="dcConfirmBtn" class="btn-danger" type="button">Delete</button>
     </div>
   </div>
 </div>

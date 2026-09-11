@@ -1,7 +1,10 @@
 (function () {
   'use strict';
 
-  const STATUS_ICON = { planned: '○', alerting: '◉', in_progress: '◐', done: '●', skipped: '–', missed: '✕' };
+  const STATUS_ICON = {
+    planned: '○', alerting: '◉', in_progress: '◐', paused: '‖',
+    done: '●', skipped: '–', missed: '✕',
+  };
 
   const el = (id) => document.getElementById(id);
 
@@ -9,9 +12,6 @@
   const dateLabelEl = el('dateLabel');
   const streakNumEl = el('streakNum');
   const streakBestEl = el('streakBest');
-
-  const todayViewEl = el('todayView');
-  const planViewEl = el('planView');
 
   const nowCardEl = el('nowCard');
   const nowEyebrowEl = el('nowEyebrow');
@@ -21,18 +21,14 @@
   const progressFillEl = el('progressFill');
   const progressLabelEl = el('progressLabel');
   const timelineEl = el('timeline');
-  const emptyTodayEl = el('emptyToday');
+  const emptyViewEl = el('emptyView');
+  const viewDateLabelEl = el('viewDateLabel');
 
-  const planPrevBtn = el('planPrev');
-  const planTodayBtn = el('planToday');
-  const planTomorrowBtn = el('planTomorrow');
-  const planNextBtn = el('planNext');
-  const planDateLabelEl = el('planDateLabel');
-  const planListEl = el('planList');
-  const emptyPlanEl = el('emptyPlan');
+  const qaDatesEl = el('qaDates');
+  const viewPrevBtn = el('viewPrevBtn');
+  const viewNextBtn = el('viewNextBtn');
 
   const quickAddFormEl = el('quickAddForm');
-  const qaDatesEl = el('qaDates');
   const qaTextEl = el('qaText');
   const qaErrorEl = el('qaError');
 
@@ -48,21 +44,26 @@
   const scCancelBtnEl = el('scCancelBtn');
   const scConfirmBtnEl = el('scConfirmBtn');
 
+  const deleteConfirmOverlayEl = el('deleteConfirmOverlay');
+  const dcTaskTitleEl = el('dcTaskTitle');
+  const dcCancelBtnEl = el('dcCancelBtn');
+  const dcConfirmBtnEl = el('dcConfirmBtn');
+
   const activeBannerEl = el('activeBanner');
+  const abEyebrowEl = el('abEyebrow');
   const abTitleEl = el('abTitle');
   const abTimeEl = el('abTime');
-  const abDoneBtnEl = el('abDoneBtn');
-  const abSkipBtnEl = el('abSkipBtn');
+  const abActionsEl = el('abActions');
 
   const state = {
     meta: null,
     today: { blocks: [], stats: { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 } },
     streak: { current: 0, longest: 0 },
-    planDate: null,
-    planBlocks: [],
+    viewDate: null,
+    viewBlocks: [],
+    viewStats: { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 },
     activeAlertId: null,
     activeBannerId: null,
-    qaDate: null,
   };
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -86,6 +87,13 @@
   function formatDateLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function viewDateHeading(dateStr) {
+    if (!dateStr || !state.meta) return '';
+    if (dateStr === state.meta.today) return 'Today';
+    if (dateStr === state.meta.tomorrow) return `Tomorrow · ${formatDateLabel(dateStr)}`;
+    return formatDateLabel(dateStr);
   }
 
   function parseTimeToken(token) {
@@ -220,7 +228,7 @@
     dateLabelEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
-  /* ---------------- Rendering: Today ---------------- */
+  /* ---------------- Actions ---------------- */
 
   function makeBtn(label, cls, onClick) {
     const b = document.createElement('button');
@@ -231,6 +239,14 @@
     return b;
   }
 
+  function startBlock(id) { hideAlertIfMatches(id); fetchJSON(`/api/today/blocks/${id}/start`, { method: 'POST' }).catch(console.error); }
+  function doneBlock(id) { fetchJSON(`/api/today/blocks/${id}/done`, { method: 'POST' }).catch(console.error); }
+  function skipBlock(id) { hideAlertIfMatches(id); fetchJSON(`/api/today/blocks/${id}/skip`, { method: 'POST' }).catch(console.error); }
+  function pauseBlock(id) { fetchJSON(`/api/today/blocks/${id}/pause`, { method: 'POST' }).catch(console.error); }
+  function resumeBlock(id) { fetchJSON(`/api/today/blocks/${id}/resume`, { method: 'POST' }).catch(console.error); }
+
+  /* ---------------- Streak + Active banner (always tied to real today) ---------------- */
+
   function renderStreak() {
     const s = state.streak || { current: 0, longest: 0 };
     streakNumEl.textContent = s.current;
@@ -240,8 +256,19 @@
   function updateActiveBanner(block) {
     if (block) {
       state.activeBannerId = block.id;
+      const paused = block.status === 'paused';
+      abEyebrowEl.textContent = paused ? 'Paused' : 'Active now';
       abTitleEl.textContent = block.title;
       abTimeEl.textContent = formatRange12(block.start, block.end);
+      abActionsEl.innerHTML = '';
+      if (paused) {
+        abActionsEl.appendChild(makeBtn('Resume', 'btn-primary', () => resumeBlock(block.id)));
+        abActionsEl.appendChild(makeBtn('Skip', 'btn-ghost', () => requestSkip(block.id, block.title)));
+      } else {
+        abActionsEl.appendChild(makeBtn('Mark done', 'btn-primary', () => doneBlock(block.id)));
+        abActionsEl.appendChild(makeBtn('Pause', 'btn-ghost', () => pauseBlock(block.id)));
+        abActionsEl.appendChild(makeBtn('Skip', 'btn-ghost', () => requestSkip(block.id, block.title)));
+      }
       activeBannerEl.hidden = false;
       document.body.classList.add('has-active-banner');
     } else {
@@ -251,115 +278,109 @@
     }
   }
 
-  abDoneBtnEl.addEventListener('click', () => { if (state.activeBannerId) doneBlock(state.activeBannerId); });
-  abSkipBtnEl.addEventListener('click', () => {
-    if (state.activeBannerId) requestSkip(state.activeBannerId, abTitleEl.textContent);
-  });
+  function liveBlock() {
+    return (state.today.blocks || []).find((b) => b.status === 'in_progress' || b.status === 'paused');
+  }
 
-  function renderToday() {
-    const blocks = state.today.blocks || [];
-    const stats = state.today.stats || { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 };
+  async function refreshLiveToday() {
+    const data = await fetchJSON('/api/today');
+    state.today = { blocks: data.blocks, stats: data.stats };
+    state.streak = data.streak;
+    updateActiveBanner(liveBlock());
+    renderStreak();
+  }
 
-    emptyTodayEl.hidden = blocks.length !== 0;
+  /* ---------------- Rendering: main view (whichever day is selected) ---------------- */
+
+  function renderView() {
+    const isToday = state.viewDate === (state.meta && state.meta.today);
+    const blocks = state.viewBlocks || [];
+    const stats = state.viewStats || { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 };
+
+    viewDateLabelEl.textContent = viewDateHeading(state.viewDate);
+
+    emptyViewEl.hidden = blocks.length !== 0;
+    emptyViewEl.textContent = isToday
+      ? 'Nothing planned for today. Add one above to get started.'
+      : `Nothing planned for ${formatDateLabel(state.viewDate)} yet. Add one above.`;
     nowCardEl.style.display = blocks.length ? '' : 'none';
-    nowCardEl.parentElement.querySelector('.progress-row').style.display = blocks.length ? '' : 'none';
-
-    updateActiveBanner(blocks.find((b) => b.status === 'in_progress'));
+    nowCardEl.parentElement.querySelector('.progress-row').style.display = (blocks.length && isToday) ? '' : 'none';
 
     if (!blocks.length) {
       timelineEl.innerHTML = '';
       return;
     }
 
-    progressFillEl.style.width = stats.pct + '%';
-    progressLabelEl.textContent = `${stats.done} / ${stats.total} done`;
+    if (isToday) {
+      progressFillEl.style.width = stats.pct + '%';
+      progressLabelEl.textContent = `${stats.done} / ${stats.total} done`;
+    }
 
     nowCardEl.classList.remove('state-alerting', 'state-missed');
     nowActionsEl.innerHTML = '';
 
-    const alerting = blocks.find((b) => b.status === 'alerting');
-
-    if (alerting) {
-      nowCardEl.classList.add('state-alerting');
-      nowEyebrowEl.textContent = 'Time to start';
-      nowTitleEl.textContent = alerting.title;
-      nowTimeEl.textContent = formatRange12(alerting.start, alerting.end);
-      nowActionsEl.appendChild(makeBtn('Start now', 'btn-primary', () => startBlock(alerting.id)));
-      nowActionsEl.appendChild(makeBtn('Skip', 'btn-ghost', () => requestSkip(alerting.id, alerting.title)));
-    } else {
-      const next = blocks.find((b) => b.status === 'planned');
-      if (next) {
-        nowEyebrowEl.textContent = 'Up next';
-        nowTitleEl.textContent = next.title;
-        nowTimeEl.textContent = formatRange12(next.start, next.end);
-        nowActionsEl.appendChild(makeBtn('Start now', 'btn-ghost', () => startBlock(next.id)));
+    if (isToday) {
+      const alerting = blocks.find((b) => b.status === 'alerting');
+      if (alerting) {
+        nowCardEl.classList.add('state-alerting');
+        nowEyebrowEl.textContent = 'Time to start';
+        nowTitleEl.textContent = alerting.title;
+        nowTimeEl.textContent = formatRange12(alerting.start, alerting.end);
+        nowActionsEl.appendChild(makeBtn('Start now', 'btn-primary', () => startBlock(alerting.id)));
+        nowActionsEl.appendChild(makeBtn('Skip', 'btn-ghost', () => requestSkip(alerting.id, alerting.title)));
       } else {
-        const allDone = blocks.every((b) => ['done', 'skipped', 'missed'].includes(b.status));
-        const inProgress = blocks.find((b) => b.status === 'in_progress');
-        if (allDone) {
-          nowEyebrowEl.textContent = 'Day complete';
-          nowTitleEl.textContent = `${stats.done} done · ${stats.skipped} skipped · ${stats.missed} missed`;
-        } else if (inProgress) {
-          nowEyebrowEl.textContent = 'In progress';
-          nowTitleEl.textContent = 'Tracked above — nothing else queued yet';
+        const next = blocks.find((b) => b.status === 'planned');
+        if (next) {
+          nowEyebrowEl.textContent = 'Up next';
+          nowTitleEl.textContent = next.title;
+          nowTimeEl.textContent = formatRange12(next.start, next.end);
+          nowActionsEl.appendChild(makeBtn('Start now', 'btn-ghost', () => startBlock(next.id)));
         } else {
-          nowEyebrowEl.textContent = 'Status';
-          nowTitleEl.textContent = '—';
+          const allDone = blocks.every((b) => ['done', 'skipped', 'missed'].includes(b.status));
+          const active = blocks.find((b) => b.status === 'in_progress' || b.status === 'paused');
+          if (allDone) {
+            nowEyebrowEl.textContent = 'Day complete';
+            nowTitleEl.textContent = `${stats.done} done · ${stats.skipped} skipped · ${stats.missed} missed`;
+          } else if (active) {
+            nowEyebrowEl.textContent = active.status === 'paused' ? 'Paused' : 'In progress';
+            nowTitleEl.textContent = 'Tracked above — nothing else queued yet';
+          } else {
+            nowEyebrowEl.textContent = 'Status';
+            nowTitleEl.textContent = '—';
+          }
+          nowTimeEl.textContent = '';
         }
-        nowTimeEl.textContent = '';
       }
+    } else {
+      const doneCt = blocks.filter((b) => b.status === 'done').length;
+      nowEyebrowEl.textContent = viewDateHeading(state.viewDate);
+      nowTitleEl.textContent = `${blocks.length} task${blocks.length === 1 ? '' : 's'} planned`;
+      nowTimeEl.textContent = doneCt ? `${doneCt} already done` : '';
     }
 
     timelineEl.innerHTML = '';
     blocks.forEach((b) => {
+      const canDelete = b.status !== 'done';
       const row = document.createElement('div');
       row.className = `tl-row st-${b.status}`;
       row.innerHTML = `
         <div class="tl-time">${formatRange12(b.start, b.end)}</div>
         <div class="tl-icon">${STATUS_ICON[b.status] || '○'}</div>
         <div class="tl-title">${escapeHtml(b.title)}</div>
+        <button class="icon-btn tl-edit-btn" type="button" title="Rename / reschedule">✎</button>
+        <button class="icon-btn tl-del-btn" type="button" title="${canDelete ? 'Delete' : "Completed tasks can't be deleted"}" ${canDelete ? '' : 'disabled'}>✕</button>
       `;
+      row.querySelector('.tl-edit-btn').addEventListener('click', () => openEditRow(row, b, state.viewDate, renderView));
+      if (canDelete) {
+        row.querySelector('.tl-del-btn').addEventListener('click', () => requestDelete(b.id, state.viewDate, b.title));
+      }
       timelineEl.appendChild(row);
     });
   }
 
-  function startBlock(id) { hideAlertIfMatches(id); fetchJSON(`/api/today/blocks/${id}/start`, { method: 'POST' }).catch(console.error); }
-  function doneBlock(id) { fetchJSON(`/api/today/blocks/${id}/done`, { method: 'POST' }).catch(console.error); }
-  function skipBlock(id) { hideAlertIfMatches(id); fetchJSON(`/api/today/blocks/${id}/skip`, { method: 'POST' }).catch(console.error); }
-
-  async function loadToday() {
-    const data = await fetchJSON('/api/today');
-    state.today = data;
-    state.streak = data.streak;
-    renderToday();
-    renderStreak();
-  }
-
-  /* ---------------- Rendering: Plan ---------------- */
-
-  function renderPlan() {
-    const blocks = state.planBlocks || [];
-    planDateLabelEl.textContent = formatDateLabel(state.planDate);
-    emptyPlanEl.hidden = blocks.length !== 0;
-    planListEl.innerHTML = '';
-    blocks.forEach((b) => {
-      const li = document.createElement('li');
-      li.className = 'plan-row';
-      li.innerHTML = `
-        <div class="pr-time">${formatRange12(b.start, b.end)}</div>
-        <div class="pr-title">${escapeHtml(b.title)}</div>
-        <button class="icon-btn edit-btn" type="button" title="Edit">✎</button>
-        <button class="icon-btn del-btn" type="button" title="Delete">✕</button>
-      `;
-      li.querySelector('.edit-btn').addEventListener('click', () => openEditRow(li, b));
-      li.querySelector('.del-btn').addEventListener('click', () => deleteBlockReq(b.id));
-      planListEl.appendChild(li);
-    });
-  }
-
-  function openEditRow(li, b) {
-    li.className = 'edit-form';
-    li.innerHTML = `
+  function openEditRow(row, b, dateStr, onCancel) {
+    row.className = 'edit-form';
+    row.innerHTML = `
       <input type="time" class="e-start" value="${b.start}">
       <span class="dash">–</span>
       <input type="time" class="e-end" value="${b.end}">
@@ -367,43 +388,39 @@
       <button class="btn-primary e-save" type="button">Save</button>
       <button class="btn-ghost e-cancel" type="button">Cancel</button>
     `;
-    li.querySelector('.e-save').addEventListener('click', async () => {
+    row.querySelector('.e-title').focus();
+    row.querySelector('.e-save').addEventListener('click', async () => {
       const patch = {
-        start: li.querySelector('.e-start').value,
-        end: li.querySelector('.e-end').value,
-        title: li.querySelector('.e-title').value,
+        start: row.querySelector('.e-start').value,
+        end: row.querySelector('.e-end').value,
+        title: row.querySelector('.e-title').value,
       };
       try {
-        await fetchJSON(`/api/day/${state.planDate}/blocks/${b.id}`, { method: 'PUT', body: JSON.stringify(patch) });
+        await fetchJSON(`/api/day/${dateStr}/blocks/${b.id}`, { method: 'PUT', body: JSON.stringify(patch) });
       } catch (e) { alert(e.message); }
     });
-    li.querySelector('.e-cancel').addEventListener('click', renderPlan);
+    row.querySelector('.e-cancel').addEventListener('click', onCancel);
   }
 
-  function deleteBlockReq(id) {
-    if (!confirm('Delete this block?')) return;
-    fetchJSON(`/api/day/${state.planDate}/blocks/${id}`, { method: 'DELETE' }).catch((e) => alert(e.message));
-  }
-
-  async function loadPlanDay(date) {
-    state.planDate = date;
+  async function loadView(dateStr) {
+    state.viewDate = dateStr;
+    renderQaDates();
     try {
-      const data = await fetchJSON(`/api/day/${date}`);
-      state.planBlocks = data.blocks;
-      renderPlan();
+      const data = await fetchJSON(`/api/day/${dateStr}`);
+      state.viewBlocks = data.blocks;
+      state.viewStats = data.stats;
+      renderView();
     } catch (e) { console.error(e); }
   }
 
-  function shiftPlanDate(delta) {
-    const d = new Date(state.planDate + 'T00:00:00');
+  function shiftViewDate(delta) {
+    const d = new Date(state.viewDate + 'T00:00:00');
     d.setDate(d.getDate() + delta);
-    loadPlanDay(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+    loadView(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
   }
 
-  planPrevBtn.addEventListener('click', () => shiftPlanDate(-1));
-  planNextBtn.addEventListener('click', () => shiftPlanDate(1));
-  planTodayBtn.addEventListener('click', () => loadPlanDay(state.meta.today));
-  planTomorrowBtn.addEventListener('click', () => loadPlanDay(state.meta.tomorrow));
+  viewPrevBtn.addEventListener('click', () => shiftViewDate(-1));
+  viewNextBtn.addEventListener('click', () => shiftViewDate(1));
 
   /* ---------------- Quick add (one-line, chat-style) ---------------- */
 
@@ -415,17 +432,13 @@
 
   function renderQaDates() {
     const week = (state.meta && state.meta.week) || [];
-    if (!state.qaDate) state.qaDate = week[0];
     qaDatesEl.innerHTML = '';
     week.forEach((dateStr, i) => {
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.className = 'qa-date-chip' + (dateStr === state.qaDate ? ' active' : '');
+      chip.className = 'qa-date-chip' + (dateStr === state.viewDate ? ' active' : '');
       chip.textContent = dateChipLabel(dateStr, i);
-      chip.addEventListener('click', () => {
-        state.qaDate = dateStr;
-        renderQaDates();
-      });
+      chip.addEventListener('click', () => loadView(dateStr));
       qaDatesEl.appendChild(chip);
     });
   }
@@ -439,7 +452,7 @@
       qaErrorEl.hidden = false;
       return;
     }
-    const targetDate = state.qaDate || state.meta.today;
+    const targetDate = state.viewDate || (state.meta && state.meta.today);
     const body = { title: parsed.title };
     if (parsed.start) body.start = parsed.start;
     if (parsed.end) body.end = parsed.end;
@@ -451,18 +464,6 @@
       qaErrorEl.textContent = err.message;
       qaErrorEl.hidden = false;
     }
-  });
-
-  /* ---------------- Tabs ---------------- */
-
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-      tab.classList.add('active');
-      const view = tab.dataset.view;
-      todayViewEl.hidden = view !== 'today';
-      planViewEl.hidden = view !== 'plan';
-    });
   });
 
   /* ---------------- Alert overlay ---------------- */
@@ -535,6 +536,32 @@
     closeSkipConfirm();
   });
 
+  /* ---------------- Delete confirmation ---------------- */
+
+  let deleteTargetId = null;
+  let deleteTargetDate = null;
+
+  function requestDelete(id, dateStr, title) {
+    deleteTargetId = id;
+    deleteTargetDate = dateStr;
+    dcTaskTitleEl.textContent = title;
+    deleteConfirmOverlayEl.hidden = false;
+  }
+
+  function closeDeleteConfirm() {
+    deleteConfirmOverlayEl.hidden = true;
+    deleteTargetId = null;
+    deleteTargetDate = null;
+  }
+
+  dcCancelBtnEl.addEventListener('click', closeDeleteConfirm);
+  dcConfirmBtnEl.addEventListener('click', () => {
+    if (deleteTargetId && deleteTargetDate) {
+      fetchJSON(`/api/day/${deleteTargetDate}/blocks/${deleteTargetId}`, { method: 'DELETE' }).catch((e) => alert(e.message));
+    }
+    closeDeleteConfirm();
+  });
+
   /* ---------------- Socket.io ---------------- */
 
   const socket = io();
@@ -542,13 +569,14 @@
   socket.on('day:update', (payload) => {
     if (!state.meta) return;
     if (payload.date === state.meta.today) {
-      state.today = { blocks: payload.blocks, stats: payload.stats, streak: state.streak };
-      renderToday();
+      state.today = { blocks: payload.blocks, stats: payload.stats };
+      updateActiveBanner(liveBlock());
       checkAlertResolved();
     }
-    if (payload.date === state.planDate) {
-      state.planBlocks = payload.blocks;
-      renderPlan();
+    if (payload.date === state.viewDate) {
+      state.viewBlocks = payload.blocks;
+      state.viewStats = payload.stats;
+      renderView();
     }
   });
 
@@ -570,10 +598,10 @@
       const dayChanged = state.meta && meta.today !== state.meta.today;
       state.meta = meta;
       if (dayChanged) {
-        state.qaDate = meta.today;
+        refreshLiveToday();
+        loadView(meta.today);
+      } else {
         renderQaDates();
-        loadToday();
-        loadPlanDay(meta.tomorrow);
       }
     } catch (e) { /* server unreachable, ignore this cycle */ }
   }
@@ -585,10 +613,9 @@
 
     const meta = await fetchJSON('/api/meta');
     state.meta = meta;
-    renderQaDates();
 
-    await loadToday();
-    await loadPlanDay(meta.tomorrow);
+    await refreshLiveToday();
+    await loadView(meta.today);
   }
 
   init().catch((e) => console.error('init failed', e));

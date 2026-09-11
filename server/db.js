@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const STORE_PATH = path.join(DATA_DIR, 'store.json');
 
-const STATUSES = ['planned', 'alerting', 'in_progress', 'done', 'skipped', 'missed'];
+const STATUSES = ['planned', 'alerting', 'in_progress', 'paused', 'done', 'skipped', 'missed'];
 
 function defaultStore() {
   return {
@@ -133,10 +133,60 @@ function addBlock(dateStr, { start, end, title }) {
     status: 'planned',
     startedAt: null,
     doneAt: null,
+    pausedAt: null,
   };
   store.days[dateStr].blocks.push(block);
   save(store);
   return block;
+}
+
+function shiftTime(hhmm, minutes) {
+  let [h, m] = hhmm.split(':').map(Number);
+  let total = h * 60 + m + minutes;
+  if (total > 23 * 60 + 59) total = 23 * 60 + 59;
+  if (total < 0) total = 0;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+
+function pauseBlock(dateStr, id) {
+  const store = load();
+  const day = store.days[dateStr];
+  if (!day) return null;
+  const block = day.blocks.find((b) => b.id === id);
+  if (!block || block.status !== 'in_progress') return null;
+  block.status = 'paused';
+  block.pausedAt = new Date().toISOString();
+  save(store);
+  return block;
+}
+
+function resumeBlock(dateStr, id) {
+  const store = load();
+  const day = store.days[dateStr];
+  if (!day) return null;
+  const block = day.blocks.find((b) => b.id === id);
+  if (!block || block.status !== 'paused') return null;
+
+  const pausedAtMs = block.pausedAt ? new Date(block.pausedAt).getTime() : Date.now();
+  const pauseMin = Math.max(0, Math.round((Date.now() - pausedAtMs) / 60000));
+
+  if (pauseMin > 0) {
+    const sorted = sortBlocks(day.blocks);
+    const idx = sorted.findIndex((b) => b.id === id);
+    if (idx !== -1) {
+      sorted[idx].end = shiftTime(sorted[idx].end, pauseMin);
+      for (let i = idx + 1; i < sorted.length; i++) {
+        if (sorted[i].status !== 'planned') continue;
+        sorted[i].start = shiftTime(sorted[i].start, pauseMin);
+        sorted[i].end = shiftTime(sorted[i].end, pauseMin);
+      }
+    }
+  }
+
+  block.status = 'in_progress';
+  block.pausedAt = null;
+  save(store);
+  return { block, pauseMin };
 }
 
 function editBlock(dateStr, id, patch) {
@@ -259,6 +309,8 @@ module.exports = {
   deleteBlock,
   findBlock,
   setBlockStatus,
+  pauseBlock,
+  resumeBlock,
   computeDayStats,
   getStreak,
   getOwnerChatId,

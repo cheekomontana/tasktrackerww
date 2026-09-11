@@ -92,5 +92,21 @@ module.exports = function (io) {
     res.json(block);
   });
 
+  router.post('/today/blocks/:id/pause', (req, res) => {
+    const date = db.todayStr();
+    const block = db.pauseBlock(date, req.params.id);
+    if (!block) return res.status(400).json({ error: 'Can only pause a task that is in progress' });
+    broadcast(date);
+    res.json(block);
+  });
+
+  router.post('/today/blocks/:id/resume', (req, res) => {
+    const date = db.todayStr();
+    const result = db.resumeBlock(date, req.params.id);
+    if (!result) return res.status(400).json({ error: 'Can only resume a paused task' });
+    broadcast(date);
+    res.json({ ...result.block, shiftedMinutes: result.pauseMin });
+  });
+
   return router;
 };
