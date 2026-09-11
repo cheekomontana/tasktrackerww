@@ -17,7 +17,8 @@ module.exports = function (io) {
   }
 
   router.get('/meta', (req, res) => {
-    res.json({ today: db.todayStr(), tomorrow: db.tomorrowStr() });
+    const week = Array.from({ length: 7 }, (_, i) => db.dateStrOffset(i));
+    res.json({ today: db.todayStr(), tomorrow: db.tomorrowStr(), week });
   });
 
   router.get('/streak', (req, res) => {

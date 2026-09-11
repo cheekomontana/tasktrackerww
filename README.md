@@ -34,7 +34,10 @@ Click anywhere on the dashboard once (or hit the "Enable sound" pill, bottom-rig
 
 ## Daily workflow
 
-- **Quick-add bar** (top of the page, always visible): pick Today or Tomorrow, set a start/end time, type the task, hit send — like typing into a chat box. Use it each night to lay out tomorrow.
+- **Quick-add bar** (top of the page, always visible): pick a day chip (Today, Tomorrow, or any of the next 7 days), type the task, hit send. Three ways to type it:
+  - Just the task — `Pack shipping orders` — it auto-slots right after your last task that day (or starting now, if the day's empty).
+  - A single time — `2pm Call fabric supplier` or `14:00 Call fabric supplier` — defaults to a 1-hour block.
+  - A time range — `9am-10:30am Edit YouTube video` or `9-10:30 Edit YouTube video` — uses exactly that window.
 - **Today tab** is the display view: the current/next task is shown large, with a live progress bar and a full timeline underneath.
 - **Plan tab** lets you browse any day (‹ › or the Today/Tomorrow buttons), and edit or delete blocks already on the schedule.
 - When a task's start time arrives, it goes into **alerting**: the screen flashes, the alarm chimes on a loop, and (if linked) Telegram messages you with **Start** / **Skip** buttons. Nothing dismisses it except you.

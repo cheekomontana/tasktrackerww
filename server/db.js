@@ -90,13 +90,41 @@ function getDay(dateStr) {
   return { date: dateStr, blocks: sortBlocks(store.days[dateStr].blocks) };
 }
 
+function addHour(hhmm) {
+  let [h, m] = hhmm.split(':').map(Number);
+  h = (h + 1) % 24;
+  return `${pad(h)}:${pad(m)}`;
+}
+
+function autoTimeForDay(dateStr, blocks) {
+  if (blocks.length > 0) {
+    const last = blocks[blocks.length - 1];
+    return { start: last.end, end: addHour(last.end) };
+  }
+  if (dateStr === todayStr()) {
+    const now = nowHHMM();
+    return { start: now, end: addHour(now) };
+  }
+  return { start: '09:00', end: '10:00' };
+}
+
 function addBlock(dateStr, { start, end, title }) {
   const store = load();
   if (!store.days[dateStr]) store.days[dateStr] = { blocks: [] };
-  const ns = normalizeTime(start);
-  const ne = normalizeTime(end);
-  if (!ns || !ne) throw new Error('Invalid time, use HH:MM');
   if (!title || !title.trim()) throw new Error('Title required');
+
+  let ns = start ? normalizeTime(start) : null;
+  let ne = end ? normalizeTime(end) : null;
+  if (start && !ns) throw new Error('Invalid start time');
+  if (end && !ne) throw new Error('Invalid end time');
+
+  if (!ns || !ne) {
+    const auto = autoTimeForDay(dateStr, sortBlocks(store.days[dateStr].blocks));
+    ns = ns || auto.start;
+    ne = ne || auto.end;
+  }
+  if (ne <= ns) throw new Error('End time must be after start time');
+
   const block = {
     id: crypto.randomUUID(),
     start: ns,
@@ -128,6 +156,7 @@ function editBlock(dateStr, id, patch) {
     block.end = ne;
   }
   if (patch.title !== undefined) block.title = String(patch.title).trim();
+  if (block.end <= block.start) throw new Error('End time must be after start time');
   save(store);
   return block;
 }

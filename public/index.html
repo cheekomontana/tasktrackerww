@@ -35,17 +35,12 @@
     </div>
   </header>
 
+  <div class="qa-dates" id="qaDates"></div>
   <form class="quick-add" id="quickAddForm">
-    <div class="qa-date-toggle">
-      <button type="button" class="qa-date-btn active" data-date="today">Today</button>
-      <button type="button" class="qa-date-btn" data-date="tomorrow">Tomorrow</button>
-    </div>
-    <input type="time" id="qaStart" class="qa-time" required aria-label="Start time">
-    <span class="qa-sep">–</span>
-    <input type="time" id="qaEnd" class="qa-time" required aria-label="End time">
-    <input type="text" id="qaText" class="qa-text" placeholder="Add a task… e.g. Edit YouTube video" required maxlength="80">
+    <input type="text" id="qaText" class="qa-text" placeholder="Edit YouTube video — or 9am-10:30am Edit YouTube video" required maxlength="120">
     <button type="submit" class="qa-send" aria-label="Add task">➤</button>
   </form>
+  <div class="qa-hint">No time? It slots in right after your last task. Or type a time first: <b>9am</b>, <b>2:30pm</b>, <b>9-10am</b>, <b>14:00-15:30</b>.</div>
   <div class="qa-error" id="qaError" hidden></div>
 
   <nav class="tabs">

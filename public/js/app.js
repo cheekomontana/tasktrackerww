@@ -32,11 +32,9 @@
   const emptyPlanEl = el('emptyPlan');
 
   const quickAddFormEl = el('quickAddForm');
-  const qaStartEl = el('qaStart');
-  const qaEndEl = el('qaEnd');
+  const qaDatesEl = el('qaDates');
   const qaTextEl = el('qaText');
   const qaErrorEl = el('qaError');
-  const qaDateBtns = Array.from(document.querySelectorAll('.qa-date-btn'));
 
   const alertOverlayEl = el('alertOverlay');
   const alertTitleEl = el('alertTitle');
@@ -64,7 +62,7 @@
     planBlocks: [],
     activeAlertId: null,
     activeBannerId: null,
-    qaDateMode: 'today',
+    qaDate: null,
   };
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -88,6 +86,61 @@
   function formatDateLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function parseTimeToken(token) {
+    const m = token.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    const mer = m[3] ? m[3].toLowerCase() : null;
+    if (min > 59) return null;
+    if (mer) {
+      if (h > 12 || h < 1) return null;
+      if (mer === 'am') h = h === 12 ? 0 : h;
+      else h = h === 12 ? 12 : h + 12;
+    } else if (h > 23) {
+      return null;
+    }
+    return { h, min, hasMeridiem: !!mer };
+  }
+
+  function tokenToHHMM(h, min) { return `${pad(h)}:${pad(min)}`; }
+
+  // Parses "9am-10:30am Title", "9-10am Title", "14:00 Title", or plain "Title" (no time).
+  function parseQuickAdd(raw) {
+    const text = raw.trim();
+    if (!text) return null;
+
+    let m = text.match(/^(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s+(.+)$/i);
+    if (m) {
+      const startTok = parseTimeToken(m[1]);
+      const endTok = parseTimeToken(m[2]);
+      const title = m[3].trim();
+      if (startTok && endTok && title) {
+        let finalStart = startTok;
+        if (!startTok.hasMeridiem && endTok.hasMeridiem && startTok.h <= 12) {
+          const merSuffix = m[2].trim().match(/am|pm/i)[0];
+          const reparsed = parseTimeToken(m[1].trim() + merSuffix);
+          if (reparsed) finalStart = reparsed;
+        }
+        return { start: tokenToHHMM(finalStart.h, finalStart.min), end: tokenToHHMM(endTok.h, endTok.min), title };
+      }
+    }
+
+    m = text.match(/^(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s+(.+)$/i);
+    if (m) {
+      const startTok = parseTimeToken(m[1]);
+      const title = m[2].trim();
+      if (startTok && title) {
+        const start = tokenToHHMM(startTok.h, startTok.min);
+        const endH = (startTok.h + 1) % 24;
+        const end = tokenToHHMM(endH, startTok.min);
+        return { start, end, title };
+      }
+    }
+
+    return { start: null, end: null, title: text };
   }
 
   async function fetchJSON(url, opts = {}) {
@@ -352,30 +405,44 @@
   planTodayBtn.addEventListener('click', () => loadPlanDay(state.meta.today));
   planTomorrowBtn.addEventListener('click', () => loadPlanDay(state.meta.tomorrow));
 
-  /* ---------------- Quick add (chat-style) ---------------- */
+  /* ---------------- Quick add (one-line, chat-style) ---------------- */
 
-  qaDateBtns.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      qaDateBtns.forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.qaDateMode = btn.dataset.date;
+  function dateChipLabel(dateStr, index) {
+    if (index === 0) return 'Today';
+    if (index === 1) return 'Tomorrow';
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' });
+  }
+
+  function renderQaDates() {
+    const week = (state.meta && state.meta.week) || [];
+    if (!state.qaDate) state.qaDate = week[0];
+    qaDatesEl.innerHTML = '';
+    week.forEach((dateStr, i) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'qa-date-chip' + (dateStr === state.qaDate ? ' active' : '');
+      chip.textContent = dateChipLabel(dateStr, i);
+      chip.addEventListener('click', () => {
+        state.qaDate = dateStr;
+        renderQaDates();
+      });
+      qaDatesEl.appendChild(chip);
     });
-  });
+  }
 
   quickAddFormEl.addEventListener('submit', async (e) => {
     e.preventDefault();
     qaErrorEl.hidden = true;
-    const targetDate = state.qaDateMode === 'tomorrow' ? state.meta.tomorrow : state.meta.today;
-    const body = {
-      start: qaStartEl.value,
-      end: qaEndEl.value,
-      title: qaTextEl.value,
-    };
-    if (!body.start || !body.end || !body.title.trim()) {
-      qaErrorEl.textContent = 'Add a start time, end time, and a task title.';
+    const parsed = parseQuickAdd(qaTextEl.value);
+    if (!parsed || !parsed.title) {
+      qaErrorEl.textContent = 'Type a task (optionally starting with a time, like "9am-10:30am Edit video").';
       qaErrorEl.hidden = false;
       return;
     }
+    const targetDate = state.qaDate || state.meta.today;
+    const body = { title: parsed.title };
+    if (parsed.start) body.start = parsed.start;
+    if (parsed.end) body.end = parsed.end;
     try {
       await fetchJSON(`/api/day/${targetDate}/blocks`, { method: 'POST', body: JSON.stringify(body) });
       qaTextEl.value = '';
@@ -503,6 +570,8 @@
       const dayChanged = state.meta && meta.today !== state.meta.today;
       state.meta = meta;
       if (dayChanged) {
+        state.qaDate = meta.today;
+        renderQaDates();
         loadToday();
         loadPlanDay(meta.tomorrow);
       }
@@ -516,6 +585,7 @@
 
     const meta = await fetchJSON('/api/meta');
     state.meta = meta;
+    renderQaDates();
 
     await loadToday();
     await loadPlanDay(meta.tomorrow);
