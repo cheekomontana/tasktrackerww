@@ -26,7 +26,7 @@ cp .env.example .env
 npm start
 ```
 
-Open **http://localhost:3000** in a browser and put that window/tab full-screen on the monitor. The server only listens on your machine (`127.0.0.1`) — nothing on your network can reach it.
+Open **http://localhost:3000** in a browser and put that window/tab full-screen on the monitor.
 
 If you set up the bot, open Telegram, find your bot, and send `/start` — that links your chat so alerts and `/today`, `/addtomorrow`, etc. work.
 

@@ -10,7 +10,6 @@ const telegramBot = require('./telegramBot');
 const tasksRouter = require('./routes/tasks');
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '127.0.0.1';
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +27,6 @@ io.on('connection', (socket) => {
 const notifier = telegramBot.init(io);
 scheduler.start(io, notifier);
 
-server.listen(PORT, HOST, () => {
-  console.log(`WORSTWORK tracker running at http://localhost:${PORT} (bound to ${HOST} only)`);
+server.listen(PORT, () => {
+  console.log(`WORSTWORK tracker running at http://localhost:${PORT}`);
 });

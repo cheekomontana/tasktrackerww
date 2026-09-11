@@ -410,35 +410,39 @@ body.has-active-banner .app { padding-top: 25vh; }
 
 .tl-row {
   display: grid;
-  grid-template-columns: 130px 22px 1fr;
+  grid-template-columns: 170px 28px 1fr;
   align-items: center;
-  gap: 14px;
-  padding: 12px 10px;
+  gap: 16px;
+  padding: 18px 12px;
   border-radius: var(--radius-sm);
+  border-bottom: 1px solid var(--border);
 }
+
+.tl-row:last-child { border-bottom: none; }
 
 .tl-row:hover { background: var(--bg-soft); }
 
 .tl-time {
-  font-size: 13px;
-  color: var(--text-tertiary);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.tl-icon { font-size: 15px; text-align: center; color: var(--text-tertiary); }
+.tl-icon { font-size: 22px; text-align: center; color: var(--text-tertiary); }
 
-.tl-title { font-size: 15px; color: var(--text); }
+.tl-title { font-size: 26px; font-weight: 700; color: var(--text); }
 
 .tl-row.st-done .tl-title { color: var(--text-tertiary); text-decoration: line-through; }
 .tl-row.st-done .tl-icon { color: var(--green); }
 
 .tl-row.st-skipped .tl-title { color: var(--text-tertiary); font-style: italic; }
 
-.tl-row.st-missed .tl-title { color: var(--red); font-weight: 600; }
+.tl-row.st-missed .tl-title { color: var(--red); }
 .tl-row.st-missed .tl-icon { color: var(--red); }
 
 .tl-row.st-in_progress .tl-title,
-.tl-row.st-alerting .tl-title { color: var(--text); font-weight: 600; }
+.tl-row.st-alerting .tl-title { color: var(--text); }
 .tl-row.st-in_progress .tl-icon,
 .tl-row.st-alerting .tl-icon { color: var(--blue); }
 
@@ -655,7 +659,8 @@ body.has-active-banner .app { padding-top: 25vh; }
   .topbar { flex-direction: column; gap: 18px; }
   .streak-badge { align-items: flex-start; text-align: left; }
   .now-title, .alert-title { font-size: 30px; }
-  .tl-row, .plan-row { grid-template-columns: 92px 18px 1fr; }
+  .tl-row { grid-template-columns: 120px 22px 1fr; padding: 14px 10px; }
+  .tl-title { font-size: 20px; }
   .plan-row { grid-template-columns: 92px 1fr auto auto; }
   .quick-add { flex-wrap: wrap; }
   .qa-text { min-width: 100%; order: 1; }

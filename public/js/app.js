@@ -91,10 +91,15 @@
   }
 
   async function fetchJSON(url, opts = {}) {
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...opts,
-    });
+    let res;
+    try {
+      res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+      });
+    } catch (networkErr) {
+      throw new Error("Can't reach the server. Make sure `npm start` is running in a terminal, and that you're viewing this page at http://localhost:3000 (not opening the file directly).");
+    }
     if (!res.ok) {
       let msg = 'Request failed';
       try { const j = await res.json(); msg = j.error || msg; } catch (e) {}
