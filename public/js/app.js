@@ -108,8 +108,10 @@
 
   const GREETING_NAME_KEY = 'worstwork_greeting_name';
 
+  const DEFAULT_GREETING_NAME = 'AYB, Ape';
+
   function loadGreetingName() {
-    try { return localStorage.getItem(GREETING_NAME_KEY) || 'babe'; } catch (e) { return 'babe'; }
+    try { return localStorage.getItem(GREETING_NAME_KEY) || DEFAULT_GREETING_NAME; } catch (e) { return DEFAULT_GREETING_NAME; }
   }
   function saveGreetingName(name) {
     try { localStorage.setItem(GREETING_NAME_KEY, name); } catch (e) { /* storage unavailable */ }
@@ -117,11 +119,11 @@
 
   function timeGreetingWord() {
     const h = new Date().getHours();
-    if (h < 5) return 'Still up,';
-    if (h < 12) return 'Good morning,';
-    if (h < 17) return 'Good afternoon,';
-    if (h < 22) return 'Good evening,';
-    return 'Good night,';
+    if (h < 5) return 'Still up';
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    if (h < 22) return 'Good evening';
+    return 'Good night';
   }
 
   const SUB_EMPTY = [
@@ -174,7 +176,7 @@
   greetingNameEl.textContent = loadGreetingName();
   greetingNameEl.addEventListener('blur', () => {
     let name = greetingNameEl.textContent.replace(/\s+/g, ' ').trim();
-    if (!name) name = 'babe';
+    if (!name) name = DEFAULT_GREETING_NAME;
     if (name.length > 30) name = name.slice(0, 30);
     greetingNameEl.textContent = name;
     saveGreetingName(name);
@@ -378,8 +380,16 @@
 
   /* ---------------- Streak + Active banner (always tied to real today) ---------------- */
 
+  let lastStreakCurrent = null;
+
   function renderStreak() {
     const s = state.streak || { current: 0, longest: 0 };
+    if (lastStreakCurrent !== null && s.current > lastStreakCurrent) {
+      streakNumEl.classList.remove('pop');
+      void streakNumEl.offsetWidth;
+      streakNumEl.classList.add('pop');
+    }
+    lastStreakCurrent = s.current;
     streakNumEl.textContent = s.current;
     streakBestEl.textContent = `best ${s.longest}`;
   }

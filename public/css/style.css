@@ -58,6 +58,17 @@
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+@keyframes cursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes streakPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.4); color: var(--amber); }
+  100% { transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
@@ -75,7 +86,19 @@ html, body {
   height: 100%;
 }
 
-body { min-height: 100vh; overflow-x: hidden; }
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse 900px 500px at 50% -8%, #17140f 0%, transparent 60%),
+    var(--bg);
+}
+
+html { scrollbar-color: var(--border-strong) var(--bg); scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
 .app {
   max-width: 900px;
@@ -110,6 +133,12 @@ body.has-active-banner .app { padding-top: 25vh; }
 }
 .greeting-name:hover { border-bottom-color: var(--amber); }
 .greeting-name:focus { background: var(--bg-elevated); border-bottom-color: var(--amber); }
+
+.greeting-cursor {
+  display: inline-block;
+  color: var(--amber);
+  animation: cursorBlink 1s steps(1) infinite;
+}
 
 .greeting-sub {
   margin-top: 6px;
@@ -226,7 +255,9 @@ body.has-active-banner .app { padding-top: 25vh; }
   color: var(--text);
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  display: inline-block;
 }
+.streak-num.pop { animation: streakPop 0.5s ease; }
 
 .streak-label {
   margin-top: 5px;
