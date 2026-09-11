@@ -55,6 +55,12 @@
   const abTimeEl = el('abTime');
   const abActionsEl = el('abActions');
 
+  const greetingHelloEl = el('greetingHello');
+  const greetingNameEl = el('greetingName');
+  const greetingSubEl = el('greetingSub');
+  const celebrateLayerEl = el('celebrateLayer');
+  const toastEl = el('toast');
+
   const state = {
     meta: null,
     today: { blocks: [], stats: { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 } },
@@ -64,6 +70,8 @@
     viewStats: { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 },
     activeAlertId: null,
     activeBannerId: null,
+    lastKnownStatuses: {},
+    dayCompleteDate: null,
   };
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -94,6 +102,128 @@
     if (dateStr === state.meta.today) return 'Today';
     if (dateStr === state.meta.tomorrow) return `Tomorrow · ${formatDateLabel(dateStr)}`;
     return formatDateLabel(dateStr);
+  }
+
+  /* ---------------- Greeting ---------------- */
+
+  const GREETING_NAME_KEY = 'worstwork_greeting_name';
+
+  function loadGreetingName() {
+    try { return localStorage.getItem(GREETING_NAME_KEY) || 'babe'; } catch (e) { return 'babe'; }
+  }
+  function saveGreetingName(name) {
+    try { localStorage.setItem(GREETING_NAME_KEY, name); } catch (e) { /* storage unavailable */ }
+  }
+
+  function timeGreetingWord() {
+    const h = new Date().getHours();
+    if (h < 5) return 'Still up,';
+    if (h < 12) return 'Good morning,';
+    if (h < 17) return 'Good afternoon,';
+    if (h < 22) return 'Good evening,';
+    return 'Good night,';
+  }
+
+  const SUB_EMPTY = [
+    'Nothing on the books yet — add your first task below.',
+    "A blank slate. Let's fill it in.",
+    'Nothing planned yet — type something above.',
+  ];
+  const SUB_PROGRESS = [
+    (r) => `${r} task${r === 1 ? '' : 's'} to go — you've got this.`,
+    (r) => `${r} left. Keep the streak alive.`,
+    (r) => `${r} more and today's a clean sweep.`,
+  ];
+  const SUB_DONE = [
+    'Every task handled. That’s a clean day. 🔥',
+    'All done — nothing left standing.',
+    'Cleared the board. Well done.',
+  ];
+
+  function pickPhrase(arr, seed) {
+    return arr[((seed % arr.length) + arr.length) % arr.length];
+  }
+
+  function updateGreeting() {
+    greetingHelloEl.textContent = timeGreetingWord();
+
+    const isToday = state.viewDate === (state.meta && state.meta.today);
+    const blocks = state.viewBlocks || [];
+    const total = blocks.length;
+
+    if (!isToday) {
+      greetingSubEl.textContent = total
+        ? `${total} task${total === 1 ? '' : 's'} planned for ${viewDateHeading(state.viewDate)}.`
+        : `Nothing planned for ${viewDateHeading(state.viewDate)} yet.`;
+      return;
+    }
+
+    const resolved = blocks.filter((b) => ['done', 'skipped', 'missed'].includes(b.status)).length;
+    const remaining = total - resolved;
+    const seed = total * 31 + resolved;
+
+    if (total === 0) {
+      greetingSubEl.textContent = pickPhrase(SUB_EMPTY, seed);
+    } else if (remaining === 0) {
+      greetingSubEl.textContent = pickPhrase(SUB_DONE, seed);
+    } else {
+      greetingSubEl.textContent = pickPhrase(SUB_PROGRESS, seed)(remaining);
+    }
+  }
+
+  greetingNameEl.textContent = loadGreetingName();
+  greetingNameEl.addEventListener('blur', () => {
+    let name = greetingNameEl.textContent.replace(/\s+/g, ' ').trim();
+    if (!name) name = 'babe';
+    if (name.length > 30) name = name.slice(0, 30);
+    greetingNameEl.textContent = name;
+    saveGreetingName(name);
+  });
+  greetingNameEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); greetingNameEl.blur(); }
+  });
+
+  /* ---------------- Celebration ---------------- */
+
+  let toastTimer = null;
+
+  function showToast(text) {
+    toastEl.textContent = text;
+    toastEl.hidden = false;
+    toastEl.style.animation = 'none';
+    void toastEl.offsetWidth;
+    toastEl.style.animation = '';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2600);
+  }
+
+  function spawnConfetti(count) {
+    const colors = ['#ffffff', '#f2b84b', '#6ab8f7', '#52d9a8'];
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = colors[i % colors.length];
+      const duration = 1.8 + Math.random() * 1.2;
+      piece.style.animationDuration = duration + 's';
+      piece.style.animationDelay = (Math.random() * 0.3) + 's';
+      celebrateLayerEl.appendChild(piece);
+      setTimeout(() => piece.remove(), (duration + 0.5) * 1000);
+    }
+  }
+
+  const DONE_TOASTS = ['Nice work! 🔥', 'Knocked out.', 'One down.', 'Keep it moving.'];
+
+  function detectNewlyCompleted(blocks) {
+    const newlyDone = [];
+    blocks.forEach((b) => {
+      const prev = state.lastKnownStatuses[b.id];
+      if (prev !== undefined && prev !== 'done' && b.status === 'done') newlyDone.push(b.id);
+    });
+    const map = {};
+    blocks.forEach((b) => { map[b.id] = b.status; });
+    state.lastKnownStatuses = map;
+    return newlyDone;
   }
 
   function parseTimeToken(token) {
@@ -226,6 +356,7 @@
     const d = new Date();
     clockEl.textContent = formatTime12(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
     dateLabelEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    greetingHelloEl.textContent = timeGreetingWord();
   }
 
   /* ---------------- Actions ---------------- */
@@ -298,6 +429,7 @@
     const stats = state.viewStats || { total: 0, done: 0, skipped: 0, missed: 0, pct: 0 };
 
     viewDateLabelEl.textContent = viewDateHeading(state.viewDate);
+    updateGreeting();
 
     emptyViewEl.hidden = blocks.length !== 0;
     emptyViewEl.textContent = isToday
@@ -320,6 +452,9 @@
     nowActionsEl.innerHTML = '';
 
     if (isToday) {
+      const stillComplete = blocks.length > 0 && blocks.every((b) => ['done', 'skipped', 'missed'].includes(b.status));
+      if (!stillComplete && state.dayCompleteDate === state.viewDate) state.dayCompleteDate = null;
+
       const alerting = blocks.find((b) => b.status === 'alerting');
       if (alerting) {
         nowCardEl.classList.add('state-alerting');
@@ -341,6 +476,11 @@
           if (allDone) {
             nowEyebrowEl.textContent = 'Day complete';
             nowTitleEl.textContent = `${stats.done} done · ${stats.skipped} skipped · ${stats.missed} missed`;
+            if (state.dayCompleteDate !== state.viewDate) {
+              state.dayCompleteDate = state.viewDate;
+              spawnConfetti(46);
+              showToast('🔥 Day complete — every task handled.');
+            }
           } else if (active) {
             nowEyebrowEl.textContent = active.status === 'paused' ? 'Paused' : 'In progress';
             nowTitleEl.textContent = 'Tracked above — nothing else queued yet';
@@ -358,11 +498,15 @@
       nowTimeEl.textContent = doneCt ? `${doneCt} already done` : '';
     }
 
+    const newlyDone = isToday ? detectNewlyCompleted(blocks) : [];
+    if (newlyDone.length) showToast(pickPhrase(DONE_TOASTS, newlyDone.length + blocks.length));
+
     timelineEl.innerHTML = '';
-    blocks.forEach((b) => {
+    blocks.forEach((b, i) => {
       const canDelete = b.status !== 'done';
       const row = document.createElement('div');
       row.className = `tl-row st-${b.status}`;
+      row.style.animationDelay = `${Math.min(i, 10) * 35}ms`;
       row.innerHTML = `
         <div class="tl-time">${formatRange12(b.start, b.end)}</div>
         <div class="tl-icon">${STATUS_ICON[b.status] || '○'}</div>
@@ -373,6 +517,10 @@
       row.querySelector('.tl-edit-btn').addEventListener('click', () => openEditRow(row, b, state.viewDate, renderView));
       if (canDelete) {
         row.querySelector('.tl-del-btn').addEventListener('click', () => requestDelete(b.id, state.viewDate, b.title));
+      }
+      if (newlyDone.includes(b.id)) {
+        row.classList.add('just-completed');
+        row.addEventListener('animationend', () => row.classList.remove('just-completed'), { once: true });
       }
       timelineEl.appendChild(row);
     });

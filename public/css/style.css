@@ -26,6 +26,46 @@
 
 * { box-sizing: border-box; }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popCheck {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+@keyframes rowDoneFlash {
+  0% { background: rgba(82, 217, 168, 0); }
+  30% { background: rgba(82, 217, 168, 0.14); }
+  100% { background: rgba(82, 217, 168, 0); }
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -45,6 +85,39 @@ body { min-height: 100vh; overflow-x: hidden; }
 }
 
 body.has-active-banner .app { padding-top: 25vh; }
+
+/* ---------- Greeting ---------- */
+
+.greeting {
+  margin-bottom: 26px;
+  animation: fadeSlideUp 0.6s ease both;
+}
+
+.greeting-line {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.greeting-name {
+  color: var(--amber);
+  border-bottom: 1px dashed transparent;
+  cursor: text;
+  outline: none;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.greeting-name:hover { border-bottom-color: var(--amber); }
+.greeting-name:focus { background: var(--bg-elevated); border-bottom-color: var(--amber); }
+
+.greeting-sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  animation: fadeSlideUp 0.6s ease both;
+  animation-delay: 0.08s;
+}
 
 /* ---------- Active task banner (top quarter of screen) ---------- */
 
@@ -66,6 +139,7 @@ body.has-active-banner .app { padding-top: 25vh; }
   text-align: center;
   padding: 20px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+  animation: fadeSlideDown 0.35s ease both;
 }
 
 .active-banner[hidden] { display: none; }
@@ -189,8 +263,10 @@ body.has-active-banner .app { padding-top: 25vh; }
   font-family: var(--font);
   font-size: 14px;
   cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.15s ease, color 0.15s ease;
 }
-.qa-date-nav:hover { border-color: var(--border-strong); color: var(--text); }
+.qa-date-nav:hover { border-color: var(--border-strong); color: var(--text); transform: scale(1.08); }
+.qa-date-nav:active { transform: scale(0.92); }
 
 .qa-date-chip {
   font-family: var(--font);
@@ -203,9 +279,11 @@ body.has-active-banner .app { padding-top: 25vh; }
   border-radius: 999px;
   cursor: pointer;
   letter-spacing: 0.02em;
+  transition: transform 0.12s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.qa-date-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.qa-date-chip:hover { border-color: var(--border-strong); color: var(--text); transform: translateY(-1px); }
+.qa-date-chip:active { transform: scale(0.96); }
 .qa-date-chip.active { background: var(--invert); color: var(--invert-text); border-color: var(--invert); }
 
 .view-date-label {
@@ -259,10 +337,11 @@ body.has-active-banner .app { padding-top: 25vh; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.12s ease;
 }
 
-.qa-send:hover { opacity: 0.85; }
+.qa-send:hover { opacity: 0.85; transform: scale(1.06); }
+.qa-send:active { transform: scale(0.92); }
 .qa-send:disabled { opacity: 0.3; cursor: default; }
 
 .qa-hint {
@@ -292,6 +371,9 @@ body.has-active-banner .app { padding-top: 25vh; }
   flex-direction: column;
   justify-content: center;
   box-shadow: var(--shadow-sm);
+  animation: fadeSlideUp 0.4s ease both;
+  animation-delay: 0.1s;
+  transition: border-color 0.3s ease, background 0.3s ease;
 }
 
 .now-card.state-alerting {
@@ -332,16 +414,17 @@ body.has-active-banner .app { padding-top: 25vh; }
 
 /* ---------- Buttons ---------- */
 
-.btn-primary, .btn-ghost, .btn-text-muted {
+.btn-primary, .btn-ghost, .btn-text-muted, .btn-danger {
   font-family: var(--font);
   font-size: 13px;
   font-weight: 700;
   padding: 12px 22px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.12s ease, opacity 0.15s ease, background 0.15s ease;
   border: 1px solid transparent;
 }
+.btn-primary:active, .btn-ghost:active, .btn-danger:active { transform: scale(0.96); }
 
 .btn-primary { background: var(--invert); color: var(--invert-text); }
 .btn-primary:hover { opacity: 0.85; }
@@ -408,11 +491,16 @@ body.has-active-banner .app { padding-top: 25vh; }
   padding: 18px 12px;
   border-radius: var(--radius-sm);
   border-bottom: 1px solid var(--border);
+  animation: fadeSlideUp 0.35s ease both;
+  transition: background 0.15s ease;
 }
 
 .tl-row:last-child { border-bottom: none; }
 
 .tl-row:hover { background: var(--bg-soft); }
+
+.tl-row.just-completed { animation: rowDoneFlash 1.1s ease; }
+.tl-row.just-completed .tl-icon { animation: popCheck 0.5s ease; }
 .tl-row:hover .icon-btn { opacity: 1; }
 
 .tl-time {
@@ -460,9 +548,10 @@ body.has-active-banner .app { padding-top: 25vh; }
   cursor: pointer;
   font-size: 13px;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.12s ease;
 }
-.icon-btn:hover { color: var(--text); background: var(--bg-elevated); }
+.icon-btn:hover { color: var(--text); background: var(--bg-elevated); transform: scale(1.08); }
+.icon-btn:active { transform: scale(0.92); }
 .icon-btn:disabled {
   opacity: 0;
   cursor: default;
@@ -611,6 +700,43 @@ body.has-active-banner .app { padding-top: 25vh; }
 }
 .sound-arm:hover { background: var(--bg-soft); color: var(--text); }
 .sound-arm.armed { opacity: 0.4; }
+
+/* ---------- Celebration ---------- */
+
+.celebrate-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1300;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  background: var(--invert);
+  color: var(--invert-text);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-md);
+  z-index: 1200;
+  animation: toastIn 0.25s ease both;
+}
+.toast[hidden] { display: none; }
 
 @media (max-width: 720px) {
   .topbar { flex-direction: column; gap: 18px; }

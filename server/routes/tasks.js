@@ -62,10 +62,14 @@ module.exports = function (io) {
 
   router.delete('/day/:date/blocks/:id', (req, res) => {
     if (!validDate(req.params.date)) return res.status(400).json({ error: 'Invalid date' });
-    const ok = db.deleteBlock(req.params.date, req.params.id);
-    if (!ok) return res.status(404).json({ error: 'Not found' });
-    broadcast(req.params.date);
-    res.status(204).end();
+    try {
+      const ok = db.deleteBlock(req.params.date, req.params.id);
+      if (!ok) return res.status(404).json({ error: 'Not found' });
+      broadcast(req.params.date);
+      res.status(204).end();
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   router.post('/today/blocks/:id/start', (req, res) => {

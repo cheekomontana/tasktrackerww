@@ -215,6 +215,9 @@ function deleteBlock(dateStr, id) {
   const store = load();
   const day = store.days[dateStr];
   if (!day) return false;
+  const block = day.blocks.find((b) => b.id === id);
+  if (!block) return false;
+  if (block.status === 'done') throw new Error("Completed tasks can't be deleted");
   const before = day.blocks.length;
   day.blocks = day.blocks.filter((b) => b.id !== id);
   save(store);

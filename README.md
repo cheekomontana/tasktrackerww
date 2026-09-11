@@ -47,6 +47,7 @@ Click anywhere on the dashboard once (or hit the "Enable sound" pill, bottom-rig
 - **Rename or delete** any task from the ✎ / ✕ icons next to it (hover to reveal). Deleting also asks for confirmation. **Completed tasks can't be deleted** — that's on purpose, so the record of what you actually got done stays intact.
 - If a task is never acknowledged before its end time, it's marked **missed** and shows in red in the timeline.
 - The streak badge (top right) counts consecutive "clean" days — every task that day ended up done or skipped, nothing missed.
+- The greeting at the top ("Good evening, babe") is personalized — click the name to change it, it's remembered on that browser. The line underneath adapts to your progress, and finishing tasks (or the whole day) triggers a small celebration.
 
 ## Telegram commands
 

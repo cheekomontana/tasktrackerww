@@ -17,6 +17,14 @@
 </div>
 
 <div class="app">
+  <section class="greeting" id="greeting">
+    <div class="greeting-line">
+      <span id="greetingHello">Hello,</span>
+      <span class="greeting-name" id="greetingName" contenteditable="true" spellcheck="false" title="Click to change what I call you">babe</span>
+    </div>
+    <div class="greeting-sub" id="greetingSub">Loading your day…</div>
+  </section>
+
   <header class="topbar">
     <div class="brand">
       <div class="wordmark">WORSTWORK</div>
@@ -103,6 +111,9 @@
 </div>
 
 <button id="soundArm" class="sound-arm">🔈 Enable sound</button>
+
+<div class="celebrate-layer" id="celebrateLayer"></div>
+<div class="toast" id="toast" hidden></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="js/app.js"></script>
