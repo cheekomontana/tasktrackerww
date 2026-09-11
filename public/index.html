@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORSTWORK — Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23191817'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='sans-serif' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="active-banner" id="activeBanner" hidden>
+  <div class="ab-eyebrow">Active now</div>
+  <div class="ab-title" id="abTitle">Task</div>
+  <div class="ab-time" id="abTime">—</div>
+  <div class="ab-actions">
+    <button id="abDoneBtn" class="btn-primary" type="button">Mark done</button>
+    <button id="abSkipBtn" class="btn-ghost" type="button">Skip</button>
+  </div>
+</div>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="wordmark">WORSTWORK</div>
+      <div class="tagline">daily operations</div>
+    </div>
+    <div class="clock-block">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="dateLabel">—</div>
+    </div>
+    <div class="streak-badge">
+      <div class="streak-num" id="streakNum">0</div>
+      <div class="streak-label">day streak<br><span id="streakBest">best 0</span></div>
+    </div>
+  </header>
+
+  <form class="quick-add" id="quickAddForm">
+    <div class="qa-date-toggle">
+      <button type="button" class="qa-date-btn active" data-date="today">Today</button>
+      <button type="button" class="qa-date-btn" data-date="tomorrow">Tomorrow</button>
+    </div>
+    <input type="time" id="qaStart" class="qa-time" required aria-label="Start time">
+    <span class="qa-sep">–</span>
+    <input type="time" id="qaEnd" class="qa-time" required aria-label="End time">
+    <input type="text" id="qaText" class="qa-text" placeholder="Add a task… e.g. Edit YouTube video" required maxlength="80">
+    <button type="submit" class="qa-send" aria-label="Add task">➤</button>
+  </form>
+  <div class="qa-error" id="qaError" hidden></div>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="today">Today</button>
+    <button class="tab" data-view="plan">Plan</button>
+  </nav>
+
+  <main id="todayView" class="view">
+    <section class="now-card" id="nowCard">
+      <div class="now-eyebrow" id="nowEyebrow">Loading</div>
+      <div class="now-title" id="nowTitle">—</div>
+      <div class="now-time" id="nowTime">—</div>
+      <div class="now-actions" id="nowActions"></div>
+    </section>
+
+    <div class="progress-row">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 0 done</div>
+    </div>
+
+    <section class="timeline" id="timeline"></section>
+    <div class="empty-state" id="emptyToday" hidden>
+      Nothing planned for today.<br>Add one above to get started.
+    </div>
+  </main>
+
+  <main id="planView" class="view" hidden>
+    <div class="plan-header">
+      <div class="plan-date-switch">
+        <button id="planPrev" type="button" title="Previous day">‹</button>
+        <button id="planToday" type="button">Today</button>
+        <button id="planTomorrow" type="button">Tomorrow</button>
+        <button id="planNext" type="button" title="Next day">›</button>
+      </div>
+      <h2 id="planDateLabel">—</h2>
+    </div>
+
+    <ul class="plan-list" id="planList"></ul>
+    <div class="empty-state" id="emptyPlan" hidden>Nothing planned for this day yet.</div>
+  </main>
+</div>
+
+<div class="alert-overlay" id="alertOverlay" hidden>
+  <div class="alert-pulse"></div>
+  <div class="alert-content">
+    <div class="alert-eyebrow">Time to start</div>
+    <div class="alert-title" id="alertTitle">Task</div>
+    <div class="alert-time" id="alertTime">12:00 – 1:30 PM</div>
+    <div class="alert-actions">
+      <button id="alertStartBtn" class="btn-primary">Start now</button>
+      <button id="alertSkipBtn" class="btn-ghost">Skip</button>
+    </div>
+  </div>
+</div>
+
+<div class="skip-confirm-overlay" id="skipConfirmOverlay" hidden>
+  <div class="skip-confirm-box">
+    <div class="sc-title">Skip this task?</div>
+    <div class="sc-task" id="scTaskTitle">Task name</div>
+    <div class="sc-msg">Skipping breaks today's streak. Are you sure?</div>
+    <div class="sc-actions">
+      <button id="scCancelBtn" class="btn-primary" type="button">Keep it — go back</button>
+      <button id="scConfirmBtn" class="btn-text-muted" type="button" disabled>Yes, skip it (3)</button>
+    </div>
+  </div>
+</div>
+
+<button id="soundArm" class="sound-arm">🔈 Enable sound</button>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
